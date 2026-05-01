@@ -3,7 +3,7 @@ const router = express.Router();
 const authController = require('./controller');
 const { authenticate } = require('../../middleware/auth');
 
-// Public routes
+// Public routes - no headers needed, just PIN
 router.post('/login', authController.login);
 
 // Protected routes

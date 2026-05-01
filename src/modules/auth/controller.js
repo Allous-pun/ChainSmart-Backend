@@ -1,6 +1,7 @@
 const bcrypt = require('bcrypt');
 const User = require('../users/model');
-const { generateToken, createSession, findUserByPin, logout: logoutSession, logoutAllDevices, getActiveSessions } = require('./service');
+const Organization = require('../organization/model');
+const { generateToken, createSession, logout: logoutSession, logoutAllDevices, getActiveSessions } = require('./service');
 
 const login = async (req, res) => {
   try {
@@ -8,49 +9,62 @@ const login = async (req, res) => {
     const deviceId = req.headers['x-device-id'] || null;
     const ipAddress = req.ip || req.connection.remoteAddress;
     const userAgent = req.headers['user-agent'];
-    const orgCode = req.headers['x-orgcode'];
     
     if (!pin) {
       return res.status(400).json({ success: false, error: 'PIN is required' });
     }
     
-    if (!orgCode) {
-      return res.status(400).json({ success: false, error: 'x-orgcode header is required' });
+    // Find user by PIN across all organizations
+    // Since PIN is hashed, we need to find all active users and compare
+    const allUsers = await User.find({ isActive: true });
+    
+    let matchedUser = null;
+    for (const user of allUsers) {
+      const isValid = await bcrypt.compare(pin, user.pin);
+      if (isValid) {
+        matchedUser = user;
+        break;
+      }
     }
     
-    const user = await findUserByPin(orgCode, pin);
-    
-    if (!user) {
+    if (!matchedUser) {
       return res.status(401).json({ success: false, error: 'Invalid PIN' });
     }
     
-    const token = generateToken(user, user.branchId);
+    // Get organization details
+    const organization = await Organization.findOne({ orgCode: matchedUser.orgCode });
     
+    // Generate token
+    const token = generateToken(matchedUser, matchedUser.branchId);
+    
+    // Create session
     await createSession(
-      user._id,
-      user.orgCode,
-      user.branchId,
+      matchedUser._id,
+      matchedUser.orgCode,
+      matchedUser.branchId,
       token,
       deviceId,
       ipAddress,
       userAgent
     );
     
-    user.lastLoginAt = new Date();
-    user.lastLoginIP = ipAddress;
-    await user.save();
+    // Update last login
+    matchedUser.lastLoginAt = new Date();
+    matchedUser.lastLoginIP = ipAddress;
+    await matchedUser.save();
     
     res.json({
       success: true,
       data: {
         token,
+        orgCode: matchedUser.orgCode,
+        orgName: organization ? organization.orgName : null,
         user: {
-          id: user._id,
-          name: user.name,
-          role: user.role,
-          orgCode: user.orgCode,
-          branchId: user.branchId,
-          canSwitchBranches: user.role === 'owner'
+          id: matchedUser._id,
+          name: matchedUser.name,
+          role: matchedUser.role,
+          branchId: matchedUser.branchId,
+          canSwitchBranches: matchedUser.role === 'owner'
         }
       },
       message: 'Login successful'
@@ -63,7 +77,7 @@ const login = async (req, res) => {
 
 const logout = async (req, res) => {
   try {
-    await logoutSession(req.token);  // Changed from logout to logoutSession
+    await logoutSession(req.token);
     res.json({ success: true, message: 'Logged out successfully' });
   } catch (error) {
     console.error('Logout error:', error);
