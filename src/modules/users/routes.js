@@ -3,10 +3,7 @@ const router = express.Router();
 const userController = require('./controller');
 const { authenticate, requirePermission } = require('../../middleware/auth');
 
-// Public route (no auth needed for creating owner after org creation)
-router.post('/owner', userController.createOwner);
-
-// Protected routes (require authentication)
+// All routes here require authentication (no owner route)
 router.post('/employee', authenticate, requirePermission('create_user'), userController.createEmployee);
 router.get('/', authenticate, requirePermission('view_users'), userController.getUsers);
 router.get('/:userId', authenticate, requirePermission('view_users'), userController.getUser);

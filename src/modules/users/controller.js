@@ -2,17 +2,19 @@ const userService = require('./service');
 
 const createOwner = async (req, res) => {
   try {
-    const { orgCode, name, email } = req.body;
+    // Get orgCode from header (set by requireOrgCode middleware)
+    const orgCode = req.orgCode;
+    const { name, email } = req.body;
     
-    // Validate required fields (pin is no longer required)
+    // Validate required fields
     if (!orgCode || !name || !email) {
       return res.status(400).json({ 
         success: false, 
-        error: 'Missing required fields: orgCode, name, email' 
+        error: 'Missing required fields: name, email. orgCode must be in x-orgcode header.' 
       });
     }
     
-    // Email validation (optional but recommended)
+    // Email validation
     if (!email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
       return res.status(400).json({ 
         success: false, 

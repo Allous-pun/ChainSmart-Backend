@@ -20,13 +20,13 @@ const createOwner = async (data) => {
   
   const user = await User.create({
     orgCode,
-    branchId: 'pending', // Will be updated when branch is created
+    branchId: 'pending',
     pin: hashedPin,
     name,
     email,
     role: 'owner',
     isActive: true,
-    createdBy: orgCode // Self-created
+    createdBy: orgCode
   });
   
   return {
@@ -35,7 +35,7 @@ const createOwner = async (data) => {
     name: user.name,
     email: user.email,
     role: user.role,
-    pin: plainPin  // Return the plain PIN to user
+    pin: plainPin
   };
 };
 

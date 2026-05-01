@@ -6,8 +6,6 @@ const authenticate = async (req, res, next) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
     
-    console.log('🔍 Auth Middleware - Token:', token ? 'Present' : 'Missing');
-    
     if (!token) {
       return res.status(401).json({ 
         success: false, 
@@ -18,9 +16,7 @@ const authenticate = async (req, res, next) => {
     let decoded;
     try {
       decoded = jwt.verify(token, process.env.JWT_SECRET);
-      console.log('🔍 Auth Middleware - Decoded:', { userId: decoded.userId, orgCode: decoded.orgCode, role: decoded.role });
     } catch (error) {
-      console.log('🔍 Auth Middleware - JWT Error:', error.message);
       if (error.name === 'TokenExpiredError') {
         return res.status(401).json({ 
           success: false, 
@@ -35,7 +31,6 @@ const authenticate = async (req, res, next) => {
     
     const session = await Session.findOne({ token, isActive: true });
     if (!session) {
-      console.log('🔍 Auth Middleware - No active session found');
       return res.status(401).json({ 
         success: false, 
         error: 'Session expired or invalid. Please login again.' 
@@ -44,7 +39,6 @@ const authenticate = async (req, res, next) => {
     
     const user = await User.findOne({ _id: decoded.userId, isActive: true });
     if (!user) {
-      console.log('🔍 Auth Middleware - User not found or inactive');
       return res.status(401).json({ 
         success: false, 
         error: 'User account not found or deactivated.' 
@@ -58,8 +52,6 @@ const authenticate = async (req, res, next) => {
       role: decoded.role,
       name: decoded.name
     };
-    
-    console.log('🔍 Auth Middleware - req.user attached:', req.user);
     
     req.token = token;
     req.sessionId = session._id;
@@ -77,8 +69,6 @@ const authenticate = async (req, res, next) => {
 const requireOrgCode = (req, res, next) => {
   const orgCode = req.headers['x-orgcode'];
   
-  console.log('🔍 requireOrgCode - Header x-orgcode:', orgCode);
-  
   if (!orgCode) {
     return res.status(400).json({ 
       success: false, 
@@ -95,7 +85,6 @@ const requireOrgCode = (req, res, next) => {
   }
   
   req.orgCode = orgCode;
-  console.log('🔍 requireOrgCode - req.orgCode set to:', req.orgCode);
   next();
 };
 
